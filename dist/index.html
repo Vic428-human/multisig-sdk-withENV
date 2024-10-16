@@ -20,7 +20,7 @@
         } = window.utils
 
         var device = "IOS";
-        console.log('RPC_URL==>',env.RPC_URL)
+        // console.log('APP_PROVIDER==>',env.APP_PROVIDER)
         // const provider = new ethers.JsonRpcProvider("https://1rpc.io/sepolia");
         // console.log("provider===>",provider)
         // const provider = new ethers.JsonRpcProvider("https://optimism.drpc.org/");
@@ -74,6 +74,9 @@
          * @param {string} signer - 私鑰。 發起人用的簽名私鑰
          * @param {string} safeAddress - 多簽錢包合約地址。
          * @param {string} type - 調用類型。
+         * @param {string} type - EVM的山寨幣合約地址。
+         * @param {string} type - 調用類型。
+         * 
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
@@ -81,12 +84,20 @@
         const init = async (provider, signer, safeAddress, type, pepeAddress, transferAmount,transferDecimal,destination) => {
             try {
                 console.log('provider==>',provider)
+                console.log('signer==>',signer)
+                console.log('safeAddress==>',safeAddress)
+                console.log('type==>',type)
+                console.log('pepeAddress==>',pepeAddress)
+                console.log('transferAmount==>',transferAmount)
+                console.log('!transferDecimal==>',transferDecimal)
+                console.log('destination==>',destination)
+
                 const erc20Abi = [
                     "function transfer(address to, uint amount) returns (bool)",
                     "function balanceOf(address account) view returns (uint256)",
                 ];
                 const erc20Contract = new ethers.Contract(pepeAddress, erc20Abi, provider);
-                const amount = ethers.parseUnits(transferAmount, transferDecimal);
+                const amount = ethers.parseUnits(transferAmount, Number(transferDecimal));
                 const encodedTransferData = encodeTransferData(erc20Contract, destination, amount);
                 const batchTxs = { to: pepeAddress, value: '0', data: encodedTransferData };
 
@@ -109,7 +120,7 @@
             }
         };
         
-        
+        init(env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)
         /**
          * @async
          * @function signTransaction 發起人簽名
