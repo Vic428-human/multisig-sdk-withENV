@@ -9,11 +9,11 @@
 </head>
 
 <body>  
-    <button onclick="init(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">Initialize</button>
+    <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
     <!-- 交易創建 -->
-    <button onclick="createTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">createTransaction</button>
+    <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">calledCreateTransaction[發起人創建+簽名]</button>
     <!-- 第二個人簽署 -->
-    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr)">第二個人簽署</button>
+    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr)">calledSignTransactionFromMobile[第二人簽名]</button>
 
     <script>
 
@@ -66,6 +66,7 @@
         /** [按鈕] 初始化 0x5 發起人 進入手機介面當下就進行初始化
          * @async
          * @function 
+         * @param {string} type - 調用類型。 橋樑識別符值
          * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
          * @param {string} signer - 私鑰。 發起人用的簽名私鑰
          * @param {string} safeAddress - 多簽錢包合約地址。
@@ -73,7 +74,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const init = async (type,provider, signer, safeAddress) => {
+        const calledInit = async (type,provider, signer, safeAddress) => {
             try {              
                 globalSigner = signer;
                 globalSafe =  await SafeProtocalKit.default.init({
@@ -97,7 +98,7 @@
          * @async
          * @function createTransaction
          * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
-         * @param {string} type - 調用類型。
+         * @param {string} type - 調用類型。 橋樑識別符值
          * @param {string} pepeAddress - EVM的山寨幣合約地址。
          * @param {string} transferAmount - 轉出的數量
          * @param {string} transferDecimal - 當前Token的位數。
@@ -105,7 +106,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const createTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination) => {
+        const calledCreateTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination) => {
             try {
                 console.log('發起人簽名： type ==>', type)
                 const erc20Abi = [
