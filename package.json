@@ -1,0 +1,28 @@
+{
+  "name": "webview2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "npx webpack --config webpack.config.cjs",
+    "prepare": "husky install",
+    "start": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@safe-global/protocol-kit": "^5.0.1",
+    "axios": "^1.7.7",
+    "ethers": "^6.13.4",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.1",
+    "esmify": "^2.1.1",
+    "husky": "^8.0.3",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  }
+}

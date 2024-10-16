@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./bundle.js"></script>
+    <title>webview</title>
+</head>
+
+<body>
+
+    <script>
+
+        const {
+            axios,
+            SafeProtocalKit,
+            ethers,
+            env,
+        } = window.utils
+
+        var device = "IOS";
+        console.log('RPC_URL==>',env.RPC_URL)
+        // const provider = new ethers.JsonRpcProvider("https://1rpc.io/sepolia");
+        // console.log("provider===>",provider)
+        // const provider = new ethers.JsonRpcProvider("https://optimism.drpc.org/");
+        // const erc20Abi = [
+        //     "function transfer(address to, uint amount) returns (bool)",
+        //     "function balanceOf(address account) view returns (uint256)",
+        // ];
+        // const erc20Contract = new ethers.Contract("0x98B173f9F3a6c2C5D3494c5babF007Ed1590E84E", erc20Abi, provider);
+        // console.log('provider===>', provider)
+        // console.log('!!erc20Contract===>', erc20Contract)
+
+        /**
+         * @param {'IOS' | 'Android'} appDevice - The type of device. Possible values are 'IOS' and 'Android'.
+         */
+        function tellMeDevice(appDevice) {
+            device = appDevice;
+        }
+
+        /**
+         * 根據設備類型調用相應的應用程序消息處理程序。
+         *
+         * @function callApp
+         * @param {string} string - 要傳遞的消息字符串。
+         * @param {string} [type='callMessage'] - 消息處理程序的類型，默認為 'callMessage'。
+         * @throws {Error} 如果設備類型不支持，則拋出錯誤。
+         */
+        const callApp = (string, type = 'callMessage') => {
+            new Map([
+                [
+                    "IOS",
+                    () => {
+                        window?.webkit.messageHandlers[type].postMessage(string);
+                    },
+                ],
+                [
+                    "Android",
+                    () => {
+                        JsAndroid[type](string);
+                    },
+                ],
+            ]).get(device)();
+        };
+
+
+        /**
+         * 初始化 SafeProtocalKit 並調用 callApp 函數。
+         *
+         * @async
+         * @function init 創建交易
+         * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
+         * @param {string} signer - 私鑰。 發起人用的簽名私鑰
+         * @param {string} safeAddress - 多簽錢包合約地址。
+         * @param {string} type - 調用類型。
+         * @returns {Promise<void>} - 無返回值。
+         * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
+         */
+        //  0x5發起人 創建交易 => 創建交易的當下就已經簽名投票 
+        const init = async (provider, signer, safeAddress, type, pepeAddress, transferAmount,transferDecimal,destination) => {
+            try {
+                console.log('provider==>',provider)
+                const erc20Abi = [
+                    "function transfer(address to, uint amount) returns (bool)",
+                    "function balanceOf(address account) view returns (uint256)",
+                ];
+                const erc20Contract = new ethers.Contract(pepeAddress, erc20Abi, provider);
+                const amount = ethers.parseUnits(transferAmount, transferDecimal);
+                const encodedTransferData = encodeTransferData(erc20Contract, destination, amount);
+                const batchTxs = { to: pepeAddress, value: '0', data: encodedTransferData };
+
+                const safe =  await SafeProtocalKit.default.init({
+                    provider, //根據不同鏈路帶入對應的RPC URL
+                    signer, // 私鑰
+                    safeAddress, // 多簽錢包合約地址
+                });
+
+                // 複製 [發起人剛才創建交易] 的交易內容
+                let safeTx =  await safe.createTransaction({ transactions: [batchTxs] });
+                console.log('透過 SDK 複製 [發起人剛才創建交易] 的交易內容 ==>', safeTx);
+                // 發起人簽名
+                let ownerVoterSign = await signTransaction(provider, safe, safeTx, signer);
+                console.log('!!發起人: 簽名 ownerVoterSign =>', ownerVoterSign);
+
+                callApp(res, type);
+            } catch (error) {
+                callApp(error, 'error');
+            }
+        };
+        
+        
+        /**
+         * @async
+         * @function signTransaction 發起人簽名
+         * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
+         * @param {string} safe - 與 SDK 交互時的初始化實例
+         * @param {string} safeTx - 與 SDK 交互時的初始化實例
+         * @param {string} signer - 私鑰。 發起人用的簽名私鑰
+         * @param {string} signingMethod - 簽名方法。 [目前文檔上有看到三種]
+         * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
+         */
+        async function signTransaction(provider, safe, safeTx, signer, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
+            safe = await safe.connect({ provider, signer });
+            return await safe.signTransaction(safeTx, signingMethod);
+        }
+
+        // function signTransaction(protocolKit, safeTx, signer, signingMethod = SigningMethod.ETH_SIGN_TYPED_DATA_V4) {
+        //             protocolKit = await protocolKit.connect({ provider: getRpcUrl(), signer });
+        //         return await protocolKit.signTransaction(safeTx, signingMethod);
+        // }
+
+        function encodeTransferData(erc20Contract, destination, amount) {
+            return erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
+        }
+        function serializeData(data) {
+            return JSON.stringify(data, (key, value) => {
+                if (value instanceof Map) {
+                    return { dataType: 'Map', value: Array.from(value.entries()) };
+                }
+                if (value instanceof Set) {
+                    return { dataType: 'Set', value: Array.from(value) };
+                }
+            return value;
+            });
+        }
+        /**
+         * Converts an object to a JSON string, including functions as their string representations.
+         *
+         * @param {Object} obj - The object to be stringified.
+         * @returns {string} - The JSON string representation of the object, with functions converted to strings.
+         */
+        function stringifyObjectWithFunctions(obj) {
+            const objCopy = Object.assign({}, obj);
+            for (const key in objCopy) {
+                if (typeof objCopy[key] === "function") {
+                    objCopy[key] = objCopy[key].toString();
+                }
+            }
+            return JSON.stringify(objCopy);
+        }
+
+    </script>
+</body>
+
+</html>
