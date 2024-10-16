@@ -149,6 +149,8 @@
         const calledSignTransactionFromMobile = async (globalInitTxSignedStr) => {
             try{
                 console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
+                let convertedToJson = await deserializeData(globalInitTxSignedStr)
+                console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
             }catch (error) {
                 console.log('error==>',error)
                 callApp(error, 'error');
@@ -194,7 +196,20 @@
             return value;
             });
         }
-       
+        
+        function deserializeData(dataString) {
+            if (!dataString) return null;
+        
+            return JSON.parse(dataString, (key, value) => {
+            if (value?.dataType === 'Map') {
+                return new Map(value.value);
+            }
+            if (value?.dataType === 'Set') {
+                return new Set(value.value);
+            }
+            return value;
+            });
+        }
         /**
          * Converts an object to a JSON string, including functions as their string representations.
          *
