@@ -9,9 +9,11 @@
 </head>
 
 <body>  
-    <button onclick="init(env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">Initialize</button>
+    <button onclick="init(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">Initialize</button>
     <!-- 交易創建 -->
     <button onclick="createTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">createTransaction</button>
+    <!-- 第二個人簽署 -->
+    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr)">第二個人簽署</button>
 
     <script>
 
@@ -26,19 +28,14 @@
         let globalSafe;
         let globalSigner;
         let safeTx;
-
+        let globalInitTxSignedStr = '第二個人簽署預設值';
         let device = "IOS";
 
-        /**
-         * @param {'IOS' | 'Android'} appDevice - The type of device. Possible values are 'IOS' and 'Android'.
-         */
-        function tellMeDevice(appDevice) {
-            device = appDevice;
-        }
-
-        /** [utils]
+      
+        /** [utils] 
          * 根據設備類型調用相應的應用程序消息處理程序。
          * 將SDK的內容回傳給 手機端
+         * 
          * @function callApp
          * @param {string} string - 要傳遞的消息字符串。
          * @param {string} [type='callMessage'] - 橋樑識別符，默認為 'callMessage'。
@@ -49,10 +46,11 @@
                 [
                     "IOS",
                     () => {
-                        console.log('IOS==>type',type)
+                        console.log(`格式：${typeof string} callApp`,string)
                         // 橋樑識別符值 jsToSwift
                         //window.webkit.messageHandlers.<橋樑識別符值>.postMessage
-                        window?.webkit.messageHandlers[type].postMessage(string);
+                        // TODO: 開始對接前取消註解
+                        // window?.webkit.messageHandlers[type].postMessage(string);
                     },
                 ],
                 [
@@ -75,7 +73,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const init = async (provider, signer, safeAddress) => {
+        const init = async (type,provider, signer, safeAddress) => {
             try {              
                 globalSigner = signer;
                 globalSafe =  await SafeProtocalKit.default.init({
@@ -84,14 +82,18 @@
                     safeAddress, // 多簽錢包合約地址
                 });
                 console.log('初始化SAFE SDK==>',globalSafe)
-                // callApp(afterStringifyPayload, type);
+                let initGlobalSafe = await stringifyObjectWithFunctions(globalSafe);
+                // 初始化完之後告訴手機端已經初始化，但因為網頁沒有關掉，手機只是待機狀態，
+                // 等待別人簽名，目前全局globalSafe仍然已經是初始化狀態，
+                // 所以待會可以直接呼叫
+                callApp(initGlobalSafe, type);
             } catch (error) {
                 callApp(error, 'error');
             }
         };
         
 
-        /** [按鈕] 發起創建交易時 同時 開始進行簽名投票
+        /** [按鈕] 0x5 發起人 發起創建交易時 同時 開始進行簽名投票
          * @async
          * @function createTransaction
          * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
@@ -123,13 +125,34 @@
                 // 序列化
                 let initTxSignedStr = await serializeData(ownerVoterSign);
                 console.log('發起人簽名： initTxSignedStr ==>', initTxSignedStr)
-
-                callApp(initTxSignedStr, type);
+                
+                globalInitTxSignedStr = initTxSignedStr;
+                console.log('發起人簽名： globalInitTxSignedStr ==>', globalInitTxSignedStr)
+                // 這邊要加上從js呼叫手機端的代碼，此時發起人手機已經收到自己簽名的紀錄
+                // 手機端會另外存給後端
+                callApp(globalInitTxSignedStr, type);
             } catch (error) {
                 console.log('error==>',error)
                 callApp(error, 'error');
             }
         };
+
+         // TODO: 第二個人簽署
+         /** [按鈕] 其餘簽署人開始簽名投票
+         * @async
+         * @function calledSignTransactionFromMobile 
+         * @param {string} globalInitTxSignedStr - 先拿上一次簽署紀錄。
+         * @returns {Promise<void>} - 無返回值。
+         * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
+         */
+        const calledSignTransactionFromMobile = async (globalInitTxSignedStr) => {
+            try{
+                console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
+            }catch (error) {
+                console.log('error==>',error)
+                callApp(error, 'error');
+            }
+        }
         
         /** [utils]
          * @async
@@ -142,13 +165,13 @@
          * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
          */
         async function signTransaction(provider, globalSafe, safeTx, signer, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
-            console.log(provider, signer)
             globalSafe = await globalSafe.connect({ provider, signer });
             return await globalSafe.signTransaction(safeTx, signingMethod);
         }
+
         /** [utils]
          * 編碼 ERC20 代幣轉帳所需的數據。
-         *
+         * @function encodeTransferData 
          * @param {Contract} erc20Contract - ERC20 合約實例，用於與代幣進行交互。
          * @param {string} destination - 接收代幣的目標錢包地址。
          * @param {bigint} amount - 要轉帳的代幣數量。
@@ -170,6 +193,7 @@
             return value;
             });
         }
+       
         /**
          * Converts an object to a JSON string, including functions as their string representations.
          *
