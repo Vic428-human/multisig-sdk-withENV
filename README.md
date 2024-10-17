@@ -47,10 +47,11 @@ const calledFromIOS = async (param01, param02, param03) => {
 用途：
 手機開發人員可以直接到 ./dist 路徑裡的 index.html 自行查看每個 func 定義的 params 參數用途
 
-| FuncName                | 行爲                                 |
-| ----------------------- | ------------------------------------ |
-| calledInit              | 發起人 進入手機介面當下就進行初始化  |
-| calledCreateTransaction | 發起創建交易時 同時 開始進行簽名投票 |
+| FuncName                        | 行爲                                 |
+| ------------------------------- | ------------------------------------ |
+| calledInit                      | 發起人 進入手機介面當下就進行初始化  |
+| calledCreateTransaction         | 發起創建交易時 同時 開始進行簽名投票 |
+| calledSignTransactionFromMobile | 其餘簽署人開始簽名投票               |
 
 ## JS to IOS
 
