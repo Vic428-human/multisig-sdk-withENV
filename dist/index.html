@@ -13,7 +13,7 @@
     <!-- 交易創建 -->
     <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">calledCreateTransaction[發起人創建+簽名]</button>
     <!-- 第二個人簽署 -->
-    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr)">calledSignTransactionFromMobile[第二人簽名]</button>
+    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledSignTransactionFromMobile[第二人簽名]</button>
 
     <script>
 
@@ -28,7 +28,7 @@
         let globalSafe;
         let globalSigner;
         let safeTx;
-        let globalInitTxSignedStr = '第二個人簽署預設值';
+        let globalInitTxSignedStr = 'default';
         let device = "IOS";
 
       
@@ -46,7 +46,7 @@
                 [
                     "IOS",
                     () => {
-                        console.log(`格式：${typeof string} callApp`,string)
+                        console.log(`====從網頁端傳資料給手機端=====`,string)
                         // 橋樑識別符值 jsToSwift
                         //window.webkit.messageHandlers.<橋樑識別符值>.postMessage
                         // TODO: 開始對接前取消註解
@@ -74,7 +74,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledInit = async (type,provider, signer, safeAddress) => {
+        const calledInit = async (type, provider, signer, safeAddress) => {
             try {              
                 globalSigner = signer;
                 globalSafe =  await SafeProtocalKit.default.init({
@@ -88,6 +88,8 @@
                 // 等待別人簽名，目前全局globalSafe仍然已經是初始化狀態，
                 // 所以待會可以直接呼叫
                 callApp(initGlobalSafe, type);
+                console.log("手機端已經收到初始化資訊")
+                return initGlobalSafe;
             } catch (error) {
                 callApp(error, 'error');
             }
@@ -146,11 +148,26 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledSignTransactionFromMobile = async (globalInitTxSignedStr) => {
+        const calledSignTransactionFromMobile = async (globalInitTxSignedStr,type, provider, signer, safeAddress) => {
+            console.log("======準備開始進行第二個人簽署=======")
             try{
+                if(globalInitTxSignedStr === 'default'){
+                    console.log("default")
+                    return;
+                }
                 console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
                 let convertedToJson = await deserializeData(globalInitTxSignedStr)
                 console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
+                // 第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過
+                console.log("第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過===>")
+                let anotherSign = await calledInit(type, provider, signer, safeAddress)
+                
+                if(anotherSign){
+                    console.log("此時第二個人已經初始化====>")
+                }
+                // 開始第二個人簽名
+                // let ownerVoterSign = await signTransaction(provider, globalSafe, safeTx, globalSigner);
+
             }catch (error) {
                 console.log('error==>',error)
                 callApp(error, 'error');
