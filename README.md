@@ -1,7 +1,7 @@
 ## Table of contents
 
 - [IOS to JS](#ios-to-js)
-- [Guides](#guides)
+- [IOS to JS Function Guides](#ios-to-js-function-guilds)
 
 ## IOS to JS
 
@@ -41,7 +41,7 @@ const calledFromIOS = async (param01, param02, param03) => {
 };
 ```
 
-## Guides
+## IOS to JS Function Guides
 
 | FuncName                | 行爲                                 |
 | ----------------------- | ------------------------------------ |
