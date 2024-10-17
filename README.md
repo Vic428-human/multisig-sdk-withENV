@@ -1,6 +1,7 @@
 ## Table of contents
 
 - [IOS to JS](#ios-to-js)
+- [Guides](#guides)
 
 ## IOS to JS
 
@@ -39,3 +40,10 @@ const calledFromIOS = async (param01, param02, param03) => {
   }
 };
 ```
+
+## Guides
+
+| FuncName                | 行爲                                 |
+| ----------------------- | ------------------------------------ |
+| calledInit              | 發起人 進入手機介面當下就進行初始化  |
+| calledCreateTransaction | 發起創建交易時 同時 開始進行簽名投票 |
