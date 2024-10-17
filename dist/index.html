@@ -19,6 +19,8 @@
     <!-- 第二個人簽署 -->
     <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledSignTransactionFromMobile[第二人簽名]</button>
 
+    <!-- 上鏈 -->
+    <button onclick="calledExecuteTransaction(curSigsPayloadStr)">發起人上鏈</button>
     <script>
 
         const {
@@ -34,6 +36,7 @@
         let safeTx;
         let globalInitTxSignedStr = 'default';
         let device = "IOS";
+        let curSigsPayloadStr;
 
       
         /** [utils] 
@@ -168,15 +171,35 @@
                 console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
                 let convertedToJson = await deserializeData(globalInitTxSignedStr)
                 console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
-                let sndMutiSigAndVote = await signTransaction(globalSafe,convertedToJson);
-                console.log("第二個人已經簽名====>",sndMutiSigAndVote);
+                let curSigsPayloadObj = await signTransaction(globalSafe,convertedToJson);
+                console.log("[原始數據]簽名紀錄",curSigsPayloadObj);
+                // 序列化
+                curSigsPayloadStr = await serializeData(curSigsPayloadObj);
+                console.log("[序列化]簽名紀錄",curSigsPayloadStr);
 
+                callApp(curSigsPayloadStr, type);
             }catch (error) {
                 console.log('error==>',error)
                 callApp(error, 'error');
             }
         }
         
+
+        const calledExecuteTransaction = async (curSigsPayloadStr) => {
+            try {     
+                console.log("假設已經確定可以上鏈，拿之前的簽名紀錄",curSigsPayloadStr)   
+                let convertedToJson = await deserializeData(curSigsPayloadStr)
+                console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
+                console.log("convertedToJson===>",convertedToJson); // 這裡的值應該和最初的 convertedToJson 相同
+   
+                let curSigsPayloadObj = await executeTransaction(globalSafe,convertedToJson);
+                console.log('上鏈吧baby===>',curSigsPayloadObj);
+
+             
+            } catch (error) {
+                callApp(error, 'error');
+            }
+        };
         /** [utils]
          * @async
          * @function signTransaction 
@@ -187,6 +210,11 @@
          */
          async function signTransaction(globalSafe, payload, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
             return globalSafe.signTransaction(payload, signingMethod)
+        }
+
+        async function executeTransaction(globalSafe, payload){
+            console.log("executeTransaction",payload)
+            return globalSafe.executeTransaction(payload)
         }
 
         /** [utils]
