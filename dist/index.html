@@ -9,6 +9,7 @@
 </head>
 
 <body>  
+    <!-- 發起人初始化 : 不同人點選初始化時傳的私鑰都不同-->
     <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
     <!-- 交易創建 -->
     <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">calledCreateTransaction[發起人創建+簽名]</button>
@@ -129,7 +130,7 @@
                 // 複製 [發起人剛才創建交易] 的交易內容
                 safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs] });
                 // 發起人簽名
-                let ownerVoterSign = await signTransaction(provider, globalSafe, safeTx, globalSigner);
+                let ownerVoterSign = await signTransaction(globalSafe,safeTx);
                 // 序列化
                 let initTxSignedStr = await serializeData(ownerVoterSign);
                 console.log('發起人簽名： initTxSignedStr ==>', initTxSignedStr)
@@ -145,7 +146,6 @@
             }
         };
 
-         // TODO: 第二個人簽署
          /** [按鈕] 其餘簽署人開始簽名投票
          * @async
          * @function calledSignTransactionFromMobile 
@@ -163,18 +163,8 @@
                 console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
                 let convertedToJson = await deserializeData(globalInitTxSignedStr)
                 console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
-                // 第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過
-                console.log("第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過===>")
-                // TODO: 實際上每台手機都會在首頁初始化，所以其實這邊不用另外call初始化func，會直接調用全局即可
-                // if(!globalSafe){
-                //     console.log("第二個人沒有成功初始化===>")
-                //     return;
-                // }
-
-                let sndMutiSigAndVote = await sign2nTransaction(globalSafe,convertedToJson);
-                console.log("此時第二個人已經====>",sndMutiSigAndVote)
-                // 開始第二個人簽名
-                // let ownerVoterSign = await signTransaction(provider, globalSafe, safeTx, globalSigner);
+                let sndMutiSigAndVote = await signTransaction(globalSafe,convertedToJson);
+                console.log("第二個人已經簽名====>",sndMutiSigAndVote);
 
             }catch (error) {
                 console.log('error==>',error)
@@ -185,26 +175,13 @@
         /** [utils]
          * @async
          * @function signTransaction 
-         * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
-         * @param {string} safe - 與 SDK 交互時的初始化實例
-         * @param {string} safeTx - 與 SDK 交互時的初始化實例
-         * @param {string} signer - 私鑰。 發起人用的簽名私鑰
+         * @param {string} globalSafe - 當前手機的持有者的私鑰簽署初始化實例
+         * @param {string} payload - 先前人的簽署 payload 或 發起者的創建交易
          * @param {string} signingMethod - 簽名方法。 [目前文檔上有看到三種]
          * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
          */
-        async function signTransaction(provider, globalSafe, safeTx, signer, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
-            console.log("provider//////",provider)
-            console.log("globalSafe//////",globalSafe)
-            console.log("safeTx//////",safeTx)
-            console.log("signer//////",signer)
-            globalSafe = await globalSafe.connect({ provider, signer });
-            console.log("globalSafe",globalSafe)
-            return await globalSafe.signTransaction(safeTx, signingMethod);
-        }
-
-        // 把其餘人簽名function獨立出來
-        async function sign2nTransaction(globalSafe, convertedToJson, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
-            return globalSafe.signTransaction(convertedToJson, signingMethod)
+         async function signTransaction(globalSafe, payload, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
+            return globalSafe.signTransaction(payload, signingMethod)
         }
 
         /** [utils]
