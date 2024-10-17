@@ -12,7 +12,7 @@
     <!-- 發起人初始化 : 不同人點選初始化時傳的私鑰都不同-->
     <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
     <!-- 交易創建 -->
-    <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">calledCreateTransaction[發起人創建+簽名]</button>
+    <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">calledCreateTransaction[發起人創建+簽名]</button>
     
     <!-- 第二個人初始化 -->
     <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
@@ -114,7 +114,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledCreateTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination) => {
+        const calledCreateTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination,nonce) => {
             try {
                 console.log('發起人簽名： type ==>', type)
                 const erc20Abi = [
@@ -128,7 +128,12 @@
                 const encodedTransferData = encodeTransferData(erc20Contract, destination, amount);
                 const batchTxs = { to: pepeAddress, value: '0', data: encodedTransferData };
                 // 複製 [發起人剛才創建交易] 的交易內容
-                safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs] });
+                const options = {
+                    nonce: nonce
+                }
+                console.log("!options===>",options)
+                safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs],options });
+               
                 // 發起人簽名
                 let ownerVoterSign = await signTransaction(globalSafe,safeTx);
                 // 序列化
