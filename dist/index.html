@@ -12,8 +12,11 @@
     <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
     <!-- 交易創建 -->
     <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION)">calledCreateTransaction[發起人創建+簽名]</button>
+    
+    <!-- 第二個人初始化 -->
+    <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
     <!-- 第二個人簽署 -->
-    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledSignTransactionFromMobile[第二人簽名]</button>
+    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledSignTransactionFromMobile[第二人簽名]</button>
 
     <script>
 
@@ -75,8 +78,10 @@
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
         const calledInit = async (type, provider, signer, safeAddress) => {
-            try {              
+            try {     
+                console.log("signer===>",signer)         
                 globalSigner = signer;
+                console.log("globalSigner signer===>",globalSigner)   
                 globalSafe =  await SafeProtocalKit.default.init({
                     provider, //根據不同鏈路帶入對應的RPC URL
                     signer, // 私鑰
@@ -148,7 +153,7 @@
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledSignTransactionFromMobile = async (globalInitTxSignedStr,type, provider, signer, safeAddress) => {
+        const calledSignTransactionFromMobile = async (globalInitTxSignedStr,type, provider,signer, safeAddress) => {
             console.log("======準備開始進行第二個人簽署=======")
             try{
                 if(globalInitTxSignedStr === 'default'){
@@ -160,11 +165,14 @@
                 console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
                 // 第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過
                 console.log("第二個人簽名簽需要先初始化，因為另一台手機裝置還沒初始化過===>")
-                let anotherSign = await calledInit(type, provider, signer, safeAddress)
-                
-                if(anotherSign){
-                    console.log("此時第二個人已經初始化====>")
-                }
+                // TODO: 實際上每台手機都會在首頁初始化，所以其實這邊不用另外call初始化func，會直接調用全局即可
+                // if(!globalSafe){
+                //     console.log("第二個人沒有成功初始化===>")
+                //     return;
+                // }
+
+                let sndMutiSigAndVote = await sign2nTransaction(globalSafe,convertedToJson);
+                console.log("此時第二個人已經====>",sndMutiSigAndVote)
                 // 開始第二個人簽名
                 // let ownerVoterSign = await signTransaction(provider, globalSafe, safeTx, globalSigner);
 
@@ -185,8 +193,18 @@
          * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
          */
         async function signTransaction(provider, globalSafe, safeTx, signer, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
+            console.log("provider//////",provider)
+            console.log("globalSafe//////",globalSafe)
+            console.log("safeTx//////",safeTx)
+            console.log("signer//////",signer)
             globalSafe = await globalSafe.connect({ provider, signer });
+            console.log("globalSafe",globalSafe)
             return await globalSafe.signTransaction(safeTx, signingMethod);
+        }
+
+        // 把其餘人簽名function獨立出來
+        async function sign2nTransaction(globalSafe, convertedToJson, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
+            return globalSafe.signTransaction(convertedToJson, signingMethod)
         }
 
         /** [utils]
