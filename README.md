@@ -1,7 +1,8 @@
 ## Table of contents
 
 - [IOS to JS](#ios-to-js)
-- [IOS to JS Function Guides](#ios-to-js-function-guilds)
+- [Guides](#guides)
+- [JS to IOS](#js-to-ios)
 
 ## IOS to JS
 
@@ -41,9 +42,66 @@ const calledFromIOS = async (param01, param02, param03) => {
 };
 ```
 
-## IOS to JS Function Guides
+## Guides
+
+用途：
+手機開發人員可以直接到 ./dist 路徑裡的 index.html 自行查看每個 func 定義的 params 參數用途
 
 | FuncName                | 行爲                                 |
 | ----------------------- | ------------------------------------ |
 | calledInit              | 發起人 進入手機介面當下就進行初始化  |
 | calledCreateTransaction | 發起創建交易時 同時 開始進行簽名投票 |
+
+## JS to IOS
+
+用途：
+
+橋樑識別符值 ex: jsToSwift
+手機端拿到 SDK 回傳的字傳後，會回傳給手機端，透過事先定義的 橋樑識別符值
+
+IOS 代碼：
+
+```swift
+    let config = WKWebViewConfiguration()
+    let contentController = WKUserContentController()
+    contentController.add(self, name: "jsToSwift")
+    config.userContentController = contentController
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "jsToSwift" {
+            if var messageBody = message.body as? String {
+                print("從 JS 收到資料: \(messageBody)")
+                // 在此處處理從 JavaScript 收到的資料
+                messageBody = messageBody.replacingOccurrences(of: "\n", with: "\\n")
+
+                textView.text = messageBody
+            }
+        }
+    }
+```
+
+JS 代碼：
+
+```js
+const callApp = (string, type = "callMessage") => {
+  new Map([
+    [
+      "IOS",
+      () => {
+        console.log(`====從網頁端傳資料給手機端=====`, string);
+        // 橋樑識別符值 jsToSwift
+        //window.webkit.messageHandlers.<橋樑識別符值>.postMessage
+        window?.webkit.messageHandlers[type].postMessage(string);
+      },
+    ],
+    [
+      "Android",
+      () => {
+        JsAndroid[type](string);
+      },
+    ],
+  ]).get(device)();
+};
+
+callApp("回傳給手機端的內容字串", "jsToSwift");
+```
