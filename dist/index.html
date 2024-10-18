@@ -9,18 +9,80 @@
 </head>
 
 <body>  
-    <!-- 發起人初始化 : 不同人點選初始化時傳的私鑰都不同-->
-    <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
-    <!-- 交易創建 -->
-    <button onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">calledCreateTransaction[發起人創建+簽名]</button>
-    
-    <!-- 第二個人初始化 -->
-    <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
-    <!-- 第二個人簽署 -->
-    <button onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledSignTransactionFromMobile[第二人簽名]</button>
+    <style>
+        button {
+          display: block;
+          width: 250px;
+          margin: 10px auto;
+          padding: 12px;
+          font-size: 16px;
+          cursor: pointer;
+          text-align: center;
+          white-space: normal;
+          word-wrap: break-word;
+          background-color: #4CAF50; /* Green background */
+          color: white; /* White text */
+          border: none; /* Remove default borders */
+          border-radius: 5px; /* Rounded corners */
+          transition: background-color 0.3s ease; /* Smooth background color change */
+        }
+      
+        /* Hover effect */
+        button:hover {
+          background-color: #45a049; /* Darker green when hovered */
+        }
+      
+        /* Optional: different button colors for better distinction */
+        .primary {
+          background-color: #2196F3; /* Blue background */
+        }
+      
+        .primary:hover {
+          background-color: #1976d2; /* Darker blue when hovered */
+        }
+      
+        .danger {
+          background-color: #f44336; /* Red background */
+        }
+      
+        .danger:hover {
+          background-color: #d32f2f; /* Darker red when hovered */
+        }
 
-    <!-- 上鏈 -->
-    <button onclick="calledExecuteTransaction(curSigsPayloadStr)">發起人上鏈</button>
+        .message {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #ffeb3b; /* Yellow background for the message */
+            color: #333; /* Dark text for contrast */
+            border: 1px solid #fbc02d; /* Slightly darker border */
+            border-radius: 5px;
+            display: none; /* Hidden by default */
+            font-size: 14px;
+            text-align: center;
+        }
+      </style>
+      
+      <!-- Buttons with color and hover effects -->
+      <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
+      
+      <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
+        calledCreateTransaction[發起人創建+簽名+自定義nonce]
+      </button>
+      
+      <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE_CUSTOMIZED)">
+        calledCreateTransaction[發起人創建+簽名+非自定義nonce]
+      </button>
+      
+      <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
+      
+      <button class="danger" onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">
+        calledSignTransactionFromMobile[第二人簽名]
+      </button>
+        <!-- Container for the reminder message -->
+        <div id="reminder-message" class="message"></div>
+
+      <button class="danger" onclick="calledExecuteTransaction(curSigsPayloadStr)">發起人上鏈</button>
+      
     <script>
 
         const {
@@ -131,10 +193,10 @@
                 const encodedTransferData = encodeTransferData(erc20Contract, destination, amount);
                 const batchTxs = { to: pepeAddress, value: '0', data: encodedTransferData };
                 // 複製 [發起人剛才創建交易] 的交易內容
-                const options = {
-                    nonce: nonce
+                let options = {};
+                if (nonce !== 'false') {
+                    options.nonce = nonce;
                 }
-                console.log("!options===>",options)
                 safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs],options });
                
                 // 發起人簽名
@@ -176,6 +238,10 @@
                 // 序列化
                 curSigsPayloadStr = await serializeData(curSigsPayloadObj);
                 console.log("[序列化]簽名紀錄",curSigsPayloadStr);
+                // Display the reminder message
+                const message = document.getElementById('reminder-message');
+                message.style.display = 'block'; // Show the message
+                message.textContent = "發起者要再初始化一次才能上鏈"; // Update message text
 
                 callApp(curSigsPayloadStr, type);
             }catch (error) {

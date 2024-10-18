@@ -1,6 +1,8 @@
 [不用計算 nonce 的自動上鏈的項目地址](https://github.com/Vic428-human/multi-sig)
 用到情境：當你不知道此項目的 nonce 時，你想知道當前合約地址所處在的實際 nonce 數時
 
+[查詢測試時的發起者鏈上紀錄](https://sepolia.etherscan.io/address/0xd295b30Fe91b63dacB38b64e03855F4e2B090fdf)
+
 ## Table of contents
 
 - [IOS to JS](#ios-to-js)
