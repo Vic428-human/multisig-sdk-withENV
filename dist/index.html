@@ -184,7 +184,13 @@
             }
         }
         
-
+        /** [按鈕] 發起者上鏈 (假設threshold已經達標)
+         * @async
+         * @function calledExecuteTransaction 
+         * @param {string} curSigsPayloadStr - 先拿上一次簽署紀錄。
+         * @returns {Promise<void>} - 無返回值。
+         * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
+         */
         const calledExecuteTransaction = async (curSigsPayloadStr) => {
             try {     
                 console.log("假設已經確定可以上鏈，拿之前的簽名紀錄",curSigsPayloadStr)   
@@ -194,8 +200,10 @@
    
                 let curSigsPayloadObj = await executeTransaction(globalSafe,convertedToJson);
                 console.log('上鏈吧baby===>',curSigsPayloadObj);
-
-             
+                // 序列化
+                let curSigsPayloadStrWithHash = await serializeData(curSigsPayloadObj);
+                console.log('上鏈後的字串傳給手機端===>',curSigsPayloadStrWithHash);
+                callApp(curSigsPayloadStrWithHash, type);
             } catch (error) {
                 callApp(error, 'error');
             }
@@ -212,6 +220,13 @@
             return globalSafe.signTransaction(payload, signingMethod)
         }
 
+          /** [utils]
+         * @async
+         * @function executeTransaction 
+         * @param {string} globalSafe - 當前手機的持有者的私鑰簽署初始化實例
+         * @param {string} payload - 先前人的簽署 payload 或 發起者的創建交易
+         * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
+         */
         async function executeTransaction(globalSafe, payload){
             console.log("executeTransaction",payload)
             return globalSafe.executeTransaction(payload)
@@ -228,8 +243,11 @@
         function encodeTransferData(erc20Contract, destination, amount) {
             return erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
         }
-
-
+        
+        /**
+         * @param {Object} data - 簽名過程的payload序列化
+         * @returns {string} - JSON string
+         */
         function serializeData(data) {
             return JSON.stringify(data, (key, value) => {
                 if (value instanceof Map) {
@@ -242,6 +260,11 @@
             });
         }
         
+         
+        /**
+         * @param {Object} dataString - 簽名過程的payload反序列化
+         * @returns {string} - JSON Object
+         */
         function deserializeData(dataString) {
             if (!dataString) return null;
         
@@ -256,10 +279,8 @@
             });
         }
         /**
-         * Converts an object to a JSON string, including functions as their string representations.
-         *
-         * @param {Object} obj - The object to be stringified.
-         * @returns {string} - The JSON string representation of the object, with functions converted to strings.
+         * @param {Object} obj - 初始化SAFE SDK的字串化
+         * @returns {string} - JSON string
          */
         function stringifyObjectWithFunctions(obj) {
             const objCopy = Object.assign({}, obj);

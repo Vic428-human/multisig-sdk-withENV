@@ -52,6 +52,7 @@ const calledFromIOS = async (param01, param02, param03) => {
 | calledInit                      | 發起人 進入手機介面當下就進行初始化  |
 | calledCreateTransaction         | 發起創建交易時 同時 開始進行簽名投票 |
 | calledSignTransactionFromMobile | 其餘簽署人開始簽名投票               |
+| calledExecuteTransaction        | 發起人將交易上鏈                     |
 
 ## JS to IOS
 
