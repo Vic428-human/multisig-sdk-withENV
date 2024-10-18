@@ -94,6 +94,7 @@
 
         // 全局safe 已經初始化
         let globalSafe;
+        let globalProvider;
         let globalSigner;
         let safeTx;
         let globalInitTxSignedStr = 'default';
@@ -144,9 +145,9 @@
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
         const calledInit = async (type, provider, signer, safeAddress) => {
-            try {     
-                console.log("signer===>",signer)         
+            try {           
                 globalSigner = signer;
+                globalProvider = provider;
                 console.log("globalSigner signer===>",globalSigner)   
                 globalSafe =  await SafeProtocalKit.default.init({
                     provider, //根據不同鏈路帶入對應的RPC URL
@@ -263,9 +264,10 @@
                 let convertedToJson = await deserializeData(curSigsPayloadStr)
                 console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
                 console.log("convertedToJson===>",convertedToJson); // 這裡的值應該和最初的 convertedToJson 相同
-   
+
+                globalSafe = await connect(globalSafe,globalProvider, globalSigner);
                 let curSigsPayloadObj = await executeTransaction(globalSafe,convertedToJson);
-                console.log('上鏈吧baby===>',curSigsPayloadObj);
+                console.log('!!上鏈吧baby===>',curSigsPayloadObj);
                 // 序列化
                 let curSigsPayloadStrWithHash = await serializeData(curSigsPayloadObj);
                 console.log('上鏈後的字串傳給手機端===>',curSigsPayloadStrWithHash);
@@ -296,6 +298,13 @@
         async function executeTransaction(globalSafe, payload){
             console.log("executeTransaction",payload)
             return globalSafe.executeTransaction(payload)
+        }
+
+        // 切換角色
+        async function connect(globalSafe, provider, signer){
+            console.log("connect=====>")
+            return  globalSafe.connect({ provider, signer });
+           
         }
 
         /** [utils]
