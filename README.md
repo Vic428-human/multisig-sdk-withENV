@@ -1,3 +1,6 @@
+[native token 的轉帳方式](https://github.com/safe-global/safe-core-sdk/issues/768)
+用到情境：轉帳有 erc 跟 native 兩種
+
 [不用計算 nonce 的自動上鏈的項目地址](https://github.com/Vic428-human/multi-sig)
 用到情境：當你不知道此項目的 nonce 時，你想知道當前合約地址所處在的實際 nonce 數時
 
