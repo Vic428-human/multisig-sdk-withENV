@@ -5,86 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="./bundle.js"></script>
+    <!-- <link rel="stylesheet" href="./index.css"> -->
     <title>webview</title>
 </head>
 
-<body>  
-    <style>
-        button {
-          display: block;
-          width: 250px;
-          margin: 10px auto;
-          padding: 12px;
-          font-size: 16px;
-          cursor: pointer;
-          text-align: center;
-          white-space: normal;
-          word-wrap: break-word;
-          background-color: #4CAF50; /* Green background */
-          color: white; /* White text */
-          border: none; /* Remove default borders */
-          border-radius: 5px; /* Rounded corners */
-          transition: background-color 0.3s ease; /* Smooth background color change */
-        }
-      
-        /* Hover effect */
-        button:hover {
-          background-color: #45a049; /* Darker green when hovered */
-        }
-      
-        /* Optional: different button colors for better distinction */
-        .primary {
-          background-color: #2196F3; /* Blue background */
-        }
-      
-        .primary:hover {
-          background-color: #1976d2; /* Darker blue when hovered */
-        }
-      
-        .danger {
-          background-color: #f44336; /* Red background */
-        }
-      
-        .danger:hover {
-          background-color: #d32f2f; /* Darker red when hovered */
-        }
+<body>
+    <button id="init-button">calledInit[初始化]</button>
+    <button class="primary" id="create-transaction-button">
+        calledCreateTransaction[創建交易]
+    </button>
+    <button class="primary" id="sign-transaction-button">發起人簽名</button>
 
-        .message {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #ffeb3b; /* Yellow background for the message */
-            color: #333; /* Dark text for contrast */
-            border: 1px solid #fbc02d; /* Slightly darker border */
-            border-radius: 5px;
-            display: none; /* Hidden by default */
-            font-size: 14px;
-            text-align: center;
-        }
-      </style>
-      
-      <!-- Buttons with color and hover effects -->
-      <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
-      
-      <button class="primary" onclick="calledCreateTransaction(env.APP_TYPE,env.APP_PROVIDER,env.APP_USDT_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
-        calledCreateTransaction[發起人創建+簽名+非自定義nonce]
-      </button>
-      
-      <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE_CUSTOMIZED)">
-        calledCreateTransaction[發起人創建+簽名+自定義nonce]
-      </button>
-      
-      <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
-      
-      <button class="danger" onclick="calledSignTransactionFromMobile(globalInitTxSignedStr,env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">
+    <button id="init-button2">calledInit[第二個人初始化]</button>
+    <button class="danger" id="sign-transaction-button2">
         calledSignTransactionFromMobile[第二人簽名]
-      </button>
-        <!-- Container for the reminder message -->
-        <div id="reminder-message" class="message"></div>
+    </button>
 
-      <button class="danger" onclick="calledExecuteTransaction(curSigsPayloadStr)">發起人上鏈</button>
-      
+    <button id="execute-transaction-button" class="danger">發起人上鏈</button>
     <script>
-
         const {
             axios,
             SafeProtocalKit,
@@ -92,16 +30,36 @@
             env,
         } = window.utils
 
-        // 全局safe 已經初始化
+        //從app告訴我們設備類型
+        let device = "IOS";
+        //初始化後設置全局變數
         let globalSafe;
+
+        //紀錄發起人的簽名私鑰
         let globalProvider;
         let globalSigner;
-        let safeTx;
-        let globalInitTxSignedStr = 'default';
-        let device = "IOS";
-        let curSigsPayloadStr;
 
-      
+        //模擬手機傳入的紀錄,web端紀錄起來使用
+        let prevState
+
+        /** [utils] 
+         * @function tellMeDevice
+         * @param {string} type - 橋樑識別符
+         * @param {string} appDevice 設備類型
+         * @throws {Error} 如果設備類型不支持，則拋出錯誤。
+         */
+        const tellMeDevice = (type, appDevice) => {
+            device = appDevice
+
+            try {
+                device = appDevice
+                callApp(device, type);
+            } catch (error) {
+                callApp(error, 'error');
+            }
+        }
+
+
         /** [utils] 
          * 根據設備類型調用相應的應用程序消息處理程序。
          * 將SDK的內容回傳給 手機端
@@ -116,77 +74,79 @@
                 [
                     "IOS",
                     () => {
-                        console.log(`====從網頁端傳資料給手機端=====`,string)
+                        console.log(type, stringifyObjectWithFunctions(string))
                         // 橋樑識別符值 jsToSwift
                         //window.webkit.messageHandlers.<橋樑識別符值>.postMessage
-                        // TODO: 開始對接前取消註解
-                        // window?.webkit.messageHandlers[type].postMessage(string);
+                        window?.webkit.messageHandlers[type].postMessage(stringifyObjectWithFunctions(string));
                     },
                 ],
                 [
                     "Android",
                     () => {
-                        JsAndroid[type](string);
+                        JsAndroid[type](stringifyObjectWithFunctions(string));
                     },
                 ],
             ]).get(device)();
         };
 
 
-        /** [按鈕] 初始化 0x5 發起人 進入手機介面當下就進行初始化
+        /** [按鈕] 初始化 進入手機介面當下就進行初始化
          * @async
-         * @function 
+         * @function calledInit
          * @param {string} type - 調用類型。 橋樑識別符值
          * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
-         * @param {string} signer - 私鑰。 發起人用的簽名私鑰
+         * @param {string} signer - 私鑰。 當前使用者的簽名私鑰
          * @param {string} safeAddress - 多簽錢包合約地址。
          * 
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
         const calledInit = async (type, provider, signer, safeAddress) => {
-            try {           
+            try {
                 globalSigner = signer;
                 globalProvider = provider;
-                console.log("globalSigner signer===>",globalSigner)   
-                globalSafe =  await SafeProtocalKit.default.init({
+                globalSafe = await SafeProtocalKit.default.init({
                     provider, //根據不同鏈路帶入對應的RPC URL
                     signer, // 私鑰
                     safeAddress, // 多簽錢包合約地址
                 });
-                console.log('初始化SAFE SDK==>',globalSafe)
                 let initGlobalSafe = await stringifyObjectWithFunctions(globalSafe);
-                // 初始化完之後告訴手機端已經初始化，但因為網頁沒有關掉，手機只是待機狀態，
-                // 等待別人簽名，目前全局globalSafe仍然已經是初始化狀態，
-                // 所以待會可以直接呼叫
                 callApp(initGlobalSafe, type);
-                console.log("手機端已經收到初始化資訊")
                 return initGlobalSafe;
             } catch (error) {
                 callApp(error, 'error');
             }
         };
-        
 
-        const calledCreateTransaction = async (
-            type,
-            provider,
-            tokenAddress,
-            transferAmount,
-            transferDecimal,
-            destination,
-            nonce
-        ) => {
+
+        /** [按鈕] 創建交易
+         * 任何 owner [signer] 都可能成為發起者，所以當Owner中，有一方成為發起者，其他Owner包含發起者本人，都要經歷簽署環節，至於幾個人簽名取決於當時的threshold。
+         * @async
+         * @function calledCreateTransaction
+         * @param {string} type - 調用類型。 橋樑識別符值
+         * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
+         * @param {string} pepeAddress - EVM的山寨幣合約地址。
+         * @param {string} transferAmount - 轉出的數量
+         * @param {string} transferDecimal - 多簽錢包合約地址。
+         * @param {string} destination - 轉到哪一個外部錢包
+         * @param {string} nonce - 隨機數，可以由UI介面客製化自己定義
+         * @returns {Promise<void>} - 無返回值。
+         * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
+         */
+        const calledCreateTransaction = async (type, provider, tokenAddress, transferAmount, transferDecimal, destination, nonce) => {
             try {
+                console.log('當前幣種==>',tokenAddress)
+                console.log('當前幣種位數==>',transferDecimal)
+
                 const erc20Abi = [
                     "function transfer(address to, uint amount) returns (bool)",
-                    "function balanceOf(address account) view returns (uint256)"
+                    "function balanceOf(address account) view returns (uint256)",
                 ];
-                console.log("tokenAddress===>當前是什麼幣種？",tokenAddress)
-                console.log(`${tokenAddress} 是幾位數？ ====> `,transferDecimal)
                 const erc20Contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
                 const amount = ethers.parseUnits(transferAmount, Number(transferDecimal));
+
                 const encodedTransferData = erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
+
 
                 // 設置交易對象：根據是否為 native token 或 ERC20 token 決定參數
                 const transaction = tokenAddress.startsWith("0x00")
@@ -211,132 +171,69 @@
                     options
                 });
 
-                // 發起人簽名
-                let ownerVoterSign = await signTransaction(globalSafe, createTransactionResult);
-                console.log('!ownerVoterSign ==>', ownerVoterSign)
-
-                let initTxSignedStr = await serializeData(ownerVoterSign);
-                console.log('!!改成用新的字串話function ==>', initTxSignedStr)
-
-                globalInitTxSignedStr = initTxSignedStr;
-                console.log('發起人簽名： globalInitTxSignedStr ==>', globalInitTxSignedStr)
-                // 這邊要加上從js呼叫手機端的代碼，此時發起人手機已經收到自己簽名的紀錄
-                // 手機端會另外存給後端
-                callApp(globalInitTxSignedStr, type);
+                const result = {
+                    data: createTransactionResult.data,
+                    signatures: mapToObject(createTransactionResult.signatures)
+                }
+                prevState = JSON.stringify(result)
+                callApp(result, type);
             } catch (error) {
                 callApp(error, 'error');
             }
         };
 
-         /** [按鈕] 其餘簽署人開始簽名投票
+
+        /** [按鈕] 簽名投票
          * @async
          * @function calledSignTransactionFromMobile 
-         * @param {string} globalInitTxSignedStr - 先拿上一次簽署紀錄。
+         * @param {string} type - 調用類型。 橋樑識別符值
+         * @param {string} prevSignStr - 先前的簽署紀錄
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledSignTransactionFromMobile = async (globalInitTxSignedStr,type, provider,signer, safeAddress) => {
-            console.log("======準備開始進行第二個人簽署=======")
-            try{
-                if(globalInitTxSignedStr === 'default'){
-                    console.log("default")
-                    return;
+        const calledSignTransactionFromMobile = async (type, prevSignStr) => {
+            const prevSign = JSON.parse(prevSignStr)
+            try {
+                const signResult = await globalSafe.signTransaction({
+                    data: prevSign.data,
+                    signatures: objectToMap(prevSign.signatures)
+                }, SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4)
+                const result = {
+                    data: signResult.data,
+                    signatures: mapToObject(signResult.signatures)
                 }
-                console.log(`格式：${typeof globalInitTxSignedStr} 先拿上一次簽署紀錄`,globalInitTxSignedStr)
-                let convertedToJson = await deserializeData(globalInitTxSignedStr)
-                console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
-                let curSigsPayloadObj = await signTransaction(globalSafe,convertedToJson);
-                console.log("[原始數據]簽名紀錄",curSigsPayloadObj);
-                // 序列化
-                curSigsPayloadStr = await serializeData(curSigsPayloadObj);
-                console.log("[序列化]簽名紀錄",curSigsPayloadStr);
-                // Display the reminder message
-                const message = document.getElementById('reminder-message');
-                message.style.display = 'block'; // Show the message
-                message.textContent = "發起者要再初始化一次才能上鏈"; // Update message text
-
-                callApp(curSigsPayloadStr, type);
-            }catch (error) {
-                console.log('error==>',error)
+                prevState = JSON.stringify(result)
+                callApp(result, type);
+            } catch (error) {
                 callApp(error, 'error');
             }
         }
-        
-        /** [按鈕] 發起者上鏈 (假設threshold已經達標)
+
+         /** [按鈕] 發起者上鏈 (假設threshold已經達標)
          * @async
          * @function calledExecuteTransaction 
-         * @param {string} curSigsPayloadStr - 先拿上一次簽署紀錄。
+         * @param {string} type - 調用類型。 橋樑識別符值
+         * @param {string} prevSignStr - 先前的簽署紀錄
          * @returns {Promise<void>} - 無返回值。
          * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
          */
-        const calledExecuteTransaction = async (curSigsPayloadStr) => {
-            try {     
-                console.log("假設已經確定可以上鏈，拿之前的簽名紀錄",curSigsPayloadStr)   
-                let convertedToJson = await deserializeData(curSigsPayloadStr)
-                console.log(`格式：${typeof convertedToJson} [反序列化]先拿上一次簽署紀錄`,convertedToJson)
-                console.log("convertedToJson===>",convertedToJson); // 這裡的值應該和最初的 convertedToJson 相同
-
-                globalSafe = await connect(globalSafe,globalProvider, globalSigner);
-                let curSigsPayloadObj = await executeTransaction(globalSafe,convertedToJson);
-                console.log('!!上鏈吧baby===>',curSigsPayloadObj);
-                // 序列化
-                let curSigsPayloadStrWithHash = await serializeData(curSigsPayloadObj);
-                console.log('上鏈後的字串傳給手機端===>',curSigsPayloadStrWithHash);
-                callApp(curSigsPayloadStrWithHash, type);
+        const calledExecuteTransaction = async (type, prevSignStr) => {
+            const prevSign = JSON.parse(prevSignStr)
+            try {
+                const executeResult = await globalSafe.executeTransaction({
+                    data: prevSign.data,
+                    signatures: objectToMap(prevSign.signatures)
+                });
+                const result = {
+                    ...executeResult,
+                    transactionResponse: stringifyObjectWithFunctions(executeResult.transactionResponse)
+                }
+                callApp(result, type);
             } catch (error) {
                 callApp(error, 'error');
             }
         };
-        /** [utils]
-         * @async
-         * @function signTransaction 
-         * @param {string} globalSafe - 當前手機的持有者的私鑰簽署初始化實例
-         * @param {string} payload - 先前人的簽署 payload 或 發起者的創建交易
-         * @param {string} signingMethod - 簽名方法。 [目前文檔上有看到三種]
-         * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
-         */
-         async function signTransaction(globalSafe, payload, signingMethod = SafeProtocalKit.SigningMethod.ETH_SIGN_TYPED_DATA_V4){
-            return globalSafe.signTransaction(payload, signingMethod)
-        }
 
-          /** [utils]
-         * @async
-         * @function executeTransaction 
-         * @param {string} globalSafe - 當前手機的持有者的私鑰簽署初始化實例
-         * @param {string} payload - 先前人的簽署 payload 或 發起者的創建交易
-         * @returns {Promise<SafeTransaction>} -SAFE SDK 關於 signTransaction 的物件
-         */
-        async function executeTransaction(globalSafe, payload){
-            console.log("executeTransaction",payload)
-            return globalSafe.executeTransaction(payload)
-        }
-
-        // 切換角色
-        async function connect(globalSafe, provider, signer){
-            console.log("connect=====>")
-            return  globalSafe.connect({ provider, signer });
-           
-        }
-
-        /** [utils]
-         * 編碼 ERC20 代幣轉帳所需的數據。
-         * @function encodeTransferData 
-         * @param {Contract} erc20Contract - ERC20 合約實例，用於與代幣進行交互。
-         * @param {string} destination - 接收代幣的目標錢包地址。
-         * @param {bigint} amount - 要轉帳的代幣數量。
-         * @returns {string} - 轉帳交易的編碼數據。
-         */
-        function encodeTransferData(erc20Contract, destination, amount) {
-            return erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
-        }
-        
-        function mapToObject(map) {
-            const obj = {};
-            map.forEach((value, key) => {
-                obj[key] = value;
-            });
-            return obj;
-        }
 
         function stringifyObjectWithFunctions(obj) {
             if (obj === null || typeof obj !== 'object') {
@@ -352,44 +249,46 @@
             return JSON.stringify(objCopy);
         }
 
-        /**
-         * @param {Object} data - 簽名過程的payload序列化
-         * @returns {string} - JSON string
-         */
-        function serializeData(data) {
-            return JSON.stringify(data, (key, value) => {
-                if (value instanceof Map) {
-                    return { dataType: 'Map', value: Array.from(value.entries()) };
-                }
-                if (value instanceof Set) {
-                    return { dataType: 'Set', value: Array.from(value) };
-                }
-            return value;
+        function mapToObject(map) {
+            const obj = {};
+            map.forEach((value, key) => {
+                obj[key] = value;
             });
+            return obj;
         }
-        
-         
-        /**
-         * @param {Object} dataString - 簽名過程的payload反序列化
-         * @returns {string} - JSON Object
-         */
-        function deserializeData(dataString) {
-            if (!dataString) return null;
-        
-            return JSON.parse(dataString, (key, value) => {
-            if (value?.dataType === 'Map') {
-                return new Map(value.value);
-            }
-            if (value?.dataType === 'Set') {
-                return new Set(value.value);
-            }
-            return value;
+
+        function objectToMap(obj) {
+            const map = new Map();
+            Object.entries(obj).forEach(([key, value]) => {
+                map.set(key, value);
             });
+            return map;
         }
-        /**
-         * @param {Object} obj - 初始化SAFE SDK的字串化
-         * @returns {string} - JSON string
-         */
+
+        document.getElementById('init-button').addEventListener('click', () => {
+            calledInit(env.APP_TYPE, env.APP_PROVIDER, env.APP_SIGNER, env.APP_SAFE_ADDRESS);
+        });
+
+        document.getElementById('create-transaction-button').addEventListener('click', () => {
+            calledCreateTransaction(env.APP_TYPE, env.APP_PROVIDER, env.APP_USDT_ADDRESS, env.APP_TRANSFER_AMOUNT, env.APP_TRANSFER_DECIMAL, env.APP_DESTINATION, env.APP_NONCE);
+        });
+
+        document.getElementById('sign-transaction-button').addEventListener('click', () => {
+            calledSignTransactionFromMobile('', prevState);
+        });
+
+        document.getElementById('init-button2').addEventListener('click', () => {
+            calledInit(env.APP_TYPE, env.APP_PROVIDER, env.APP_SIGNER_2, env.APP_SAFE_ADDRESS);
+        });
+
+        document.getElementById('sign-transaction-button2').addEventListener('click', () => {
+            calledSignTransactionFromMobile('', prevState);
+        });
+
+        document.getElementById('execute-transaction-button').addEventListener('click', async () => {
+            await globalSafe.connect({ provider: globalProvider, signer: globalSigner })
+            calledExecuteTransaction('execute', prevState);
+        });
 
     </script>
 </body>
