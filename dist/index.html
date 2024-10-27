@@ -66,11 +66,11 @@
       <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
       
       <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
-        calledCreateTransaction[發起人創建+簽名+自定義nonce]
+        calledCreateTransaction[發起人創建+簽名+非自定義nonce]
       </button>
       
       <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE_CUSTOMIZED)">
-        calledCreateTransaction[發起人創建+簽名+非自定義nonce]
+        calledCreateTransaction[發起人創建+簽名+自定義nonce]
       </button>
       
       <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER_2,env.APP_SAFE_ADDRESS)">calledInit[第二個人初始化]</button>
@@ -182,7 +182,7 @@
          */
         const calledCreateTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination,nonce) => {
             try {
-                console.log('發起人簽名： type ==>', type)
+                console.log('發起人簽名： nonce ==>', nonce)
                 const erc20Abi = [
                     "function transfer(address to, uint amount) returns (bool)",
                     "function balanceOf(address account) view returns (uint256)",
@@ -199,7 +199,7 @@
                     options.nonce = nonce;
                 }
                 safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs],options });
-               
+                console.log("safeTx==>",safeTx)
                 // 發起人簽名
                 let ownerVoterSign = await signTransaction(globalSafe,safeTx);
                 // 序列化
@@ -359,6 +359,7 @@
          */
         function stringifyObjectWithFunctions(obj) {
             const objCopy = Object.assign({}, obj);
+
             for (const key in objCopy) {
                 if (typeof objCopy[key] === "function") {
                     objCopy[key] = objCopy[key].toString();
