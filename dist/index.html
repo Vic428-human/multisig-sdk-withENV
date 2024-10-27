@@ -65,7 +65,7 @@
       <!-- Buttons with color and hover effects -->
       <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
       
-      <button class="primary" onclick="calledCreateTransaction(env.APP_TYPE,env.APP_PROVIDER,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
+      <button class="primary" onclick="calledCreateTransaction(env.APP_TYPE,env.APP_PROVIDER,env.APP_USDT_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
         calledCreateTransaction[發起人創建+簽名+非自定義nonce]
       </button>
       
@@ -182,7 +182,8 @@
                     "function transfer(address to, uint amount) returns (bool)",
                     "function balanceOf(address account) view returns (uint256)"
                 ];
-
+                console.log("tokenAddress===>當前是什麼幣種？",tokenAddress)
+                console.log(`${tokenAddress} 是幾位數？ ====> `,transferDecimal)
                 const erc20Contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
                 const amount = ethers.parseUnits(transferAmount, Number(transferDecimal));
                 const encodedTransferData = erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
@@ -205,16 +206,17 @@
                     nonce: nonce !== 'false' ? nonce : undefined
                 };
 
-                const safeTx = await globalSafe.createTransaction({
+                const createTransactionResult = await globalSafe.createTransaction({
                     transactions: [transaction],
                     options
                 });
 
                 // 發起人簽名
-                let ownerVoterSign = await signTransaction(globalSafe,safeTx);
+                let ownerVoterSign = await signTransaction(globalSafe, createTransactionResult);
+                console.log('!ownerVoterSign ==>', ownerVoterSign)
 
                 let initTxSignedStr = await serializeData(ownerVoterSign);
-                console.log('發起人簽名： initTxSignedStr ==>', initTxSignedStr)
+                console.log('!!改成用新的字串話function ==>', initTxSignedStr)
 
                 globalInitTxSignedStr = initTxSignedStr;
                 console.log('發起人簽名： globalInitTxSignedStr ==>', globalInitTxSignedStr)
@@ -328,6 +330,28 @@
             return erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
         }
         
+        function mapToObject(map) {
+            const obj = {};
+            map.forEach((value, key) => {
+                obj[key] = value;
+            });
+            return obj;
+        }
+
+        function stringifyObjectWithFunctions(obj) {
+            if (obj === null || typeof obj !== 'object') {
+                return String(obj);
+            }
+
+            const objCopy = Object.assign({}, obj);
+            for (const key in objCopy) {
+                if (typeof objCopy[key] === "function") {
+                    objCopy[key] = objCopy[key].toString();
+                }
+            }
+            return JSON.stringify(objCopy);
+        }
+
         /**
          * @param {Object} data - 簽名過程的payload序列化
          * @returns {string} - JSON string
@@ -366,16 +390,6 @@
          * @param {Object} obj - 初始化SAFE SDK的字串化
          * @returns {string} - JSON string
          */
-        function stringifyObjectWithFunctions(obj) {
-            const objCopy = Object.assign({}, obj);
-
-            for (const key in objCopy) {
-                if (typeof objCopy[key] === "function") {
-                    objCopy[key] = objCopy[key].toString();
-                }
-            }
-            return JSON.stringify(objCopy);
-        }
 
     </script>
 </body>
