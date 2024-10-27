@@ -65,7 +65,7 @@
       <!-- Buttons with color and hover effects -->
       <button onclick="calledInit(env.APP_TYPE,env.APP_PROVIDER,env.APP_SIGNER,env.APP_SAFE_ADDRESS)">calledInit[初始化]</button>
       
-      <button class="primary" onclick="calledCreateTransaction(env.APP_PROVIDER,env.APP_TYPE,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
+      <button class="primary" onclick="calledCreateTransaction(env.APP_TYPE,env.APP_PROVIDER,env.APP_PEPE_ADDRESS,env.APP_TRANSFER_AMOUNT,env.APP_TRANSFER_DECIMAL,env.APP_DESTINATION,env.APP_NONCE)">
         calledCreateTransaction[發起人創建+簽名+非自定義nonce]
       </button>
       
@@ -168,51 +168,60 @@
         };
         
 
-        /** [按鈕] 0x5 發起人 發起創建交易時 同時 開始進行簽名投票
-         * @async
-         * @function createTransaction
-         * @param {string} provider - 根據不同鏈路帶入對應的RPC URL。
-         * @param {string} type - 調用類型。 橋樑識別符值
-         * @param {string} pepeAddress - EVM的山寨幣合約地址。
-         * @param {string} transferAmount - 轉出的數量
-         * @param {string} transferDecimal - 當前Token的位數。
-         * @param {string} destination - 轉到哪一個外部錢包
-         * @returns {Promise<void>} - 無返回值。
-         * @throws {Error} - 如果初始化失敗，將拋出錯誤並調用 callApp 函數。
-         */
-        const calledCreateTransaction = async (provider, type, pepeAddress, transferAmount,transferDecimal,destination,nonce) => {
+        const calledCreateTransaction = async (
+            type,
+            provider,
+            tokenAddress,
+            transferAmount,
+            transferDecimal,
+            destination,
+            nonce
+        ) => {
             try {
-                console.log('發起人簽名： nonce ==>', nonce)
                 const erc20Abi = [
                     "function transfer(address to, uint amount) returns (bool)",
-                    "function balanceOf(address account) view returns (uint256)",
+                    "function balanceOf(address account) view returns (uint256)"
                 ];
-                const erc20Contract = new ethers.Contract(pepeAddress, erc20Abi, provider);
-                const amount = ethers.parseUnits(transferAmount, Number(transferDecimal));
-                console.log('發起人簽名： amount ==>', typeof amount)
 
-                const encodedTransferData = encodeTransferData(erc20Contract, destination, amount);
-                const batchTxs = { to: pepeAddress, value: '0', data: encodedTransferData };
-                // 複製 [發起人剛才創建交易] 的交易內容
-                let options = {};
-                if (nonce !== 'false') {
-                    options.nonce = nonce;
-                }
-                safeTx =  await globalSafe.createTransaction({ transactions: [batchTxs],options });
-                console.log("safeTx==>",safeTx)
+                const erc20Contract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+                const amount = ethers.parseUnits(transferAmount, Number(transferDecimal));
+                const encodedTransferData = erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
+
+                // 設置交易對象：根據是否為 native token 或 ERC20 token 決定參數
+                const transaction = tokenAddress.startsWith("0x00")
+                    ? {
+                        to: destination,
+                        value: amount,
+                        data: '0x00'
+                    } // native token
+                    : {
+                        to: tokenAddress,
+                        value: '0',
+                        data: encodedTransferData
+                    }; // ERC20 token
+
+                // 設置選項對象：如果 nonce 是 'false'，設為 undefined
+                const options = {
+                    nonce: nonce !== 'false' ? nonce : undefined
+                };
+
+                const safeTx = await globalSafe.createTransaction({
+                    transactions: [transaction],
+                    options
+                });
+
                 // 發起人簽名
                 let ownerVoterSign = await signTransaction(globalSafe,safeTx);
-                // 序列化
+
                 let initTxSignedStr = await serializeData(ownerVoterSign);
                 console.log('發起人簽名： initTxSignedStr ==>', initTxSignedStr)
-                
+
                 globalInitTxSignedStr = initTxSignedStr;
                 console.log('發起人簽名： globalInitTxSignedStr ==>', globalInitTxSignedStr)
                 // 這邊要加上從js呼叫手機端的代碼，此時發起人手機已經收到自己簽名的紀錄
                 // 手機端會另外存給後端
                 callApp(globalInitTxSignedStr, type);
             } catch (error) {
-                console.log('error==>',error)
                 callApp(error, 'error');
             }
         };
