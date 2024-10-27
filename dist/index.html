@@ -147,20 +147,23 @@
 
                 const encodedTransferData = erc20Contract.interface.encodeFunctionData("transfer", [destination, amount]);
 
-
+                const checksumAddresss = ethers.getAddress(destination);
+                console.log("checksumAddresss==>",checksumAddresss)
+                const value = ethers.parseEther(amount.toString()).toString();
+                console.log("value==>",value)
                 // 設置交易對象：根據是否為 native token 或 ERC20 token 決定參數
                 const transaction = tokenAddress.startsWith("0x00")
                     ? {
-                        to: destination,
-                        value: amount,
-                        data: '0x00'
+                        to: checksumAddresss,
+                        data: '0x',
+                        value: value,
                     } // native token
                     : {
                         to: tokenAddress,
                         value: '0',
                         data: encodedTransferData
                     }; // ERC20 token
-
+                console.log("transaction===>",transaction)
                 // 設置選項對象：如果 nonce 是 'false'，設為 undefined
                 const options = {
                     nonce: nonce !== 'false' ? nonce : undefined
@@ -170,12 +173,15 @@
                     transactions: [transaction],
                     options
                 });
-
+               
+                console.log("createTransactionResult==>",createTransactionResult)
                 const result = {
                     data: createTransactionResult.data,
                     signatures: mapToObject(createTransactionResult.signatures)
                 }
+                console.log("result==>",result)
                 prevState = JSON.stringify(result)
+                console.log("prevState==>",prevState)
                 callApp(result, type);
             } catch (error) {
                 callApp(error, 'error');
@@ -193,6 +199,7 @@
          */
         const calledSignTransactionFromMobile = async (type, prevSignStr) => {
             const prevSign = JSON.parse(prevSignStr)
+            console.log("prevSign==>",prevSign)
             try {
                 const signResult = await globalSafe.signTransaction({
                     data: prevSign.data,
@@ -270,7 +277,7 @@
         });
 
         document.getElementById('create-transaction-button').addEventListener('click', () => {
-            calledCreateTransaction(env.APP_TYPE, env.APP_PROVIDER, env.APP_USDT_ADDRESS, env.APP_TRANSFER_AMOUNT, env.APP_TRANSFER_DECIMAL, env.APP_DESTINATION, env.APP_NONCE);
+            calledCreateTransaction(env.APP_TYPE, env.APP_PROVIDER, env.APP_NATIVE_TOKEN_ADDRESS, env.APP_TRANSFER_AMOUNT, env.APP_TRANSFER_DECIMAL, env.APP_DESTINATION, env.APP_NONCE);
         });
 
         document.getElementById('sign-transaction-button').addEventListener('click', () => {
